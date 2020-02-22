@@ -7,6 +7,7 @@ let Correctword = '';
 let results = [];
 let toggle = true;
 let randomOperation = '';
+let ranIndex = 0;
 
 if (process.argv.length == 4) {
    operation = process.argv[2];
@@ -33,10 +34,11 @@ async function random() {
    randomOperation = operations[Math.floor(Math.random() * operations.length)];
    ({ Correctword, results } = await fetchDataRandom('', randomOperation));
    if (!results.length) {
+      console.log("please Wait .....");
       randomOperation = 'syn';
       ({ Correctword, results } = await fetchDataRandom('', randomOperation));
    }
-   // console.log("results", results)
+   // console.log("result for checking", Correctword)
    tryagain();
 }
 
@@ -64,11 +66,15 @@ process.stdin.on('data', async function (data) {
       tryagain();
    } else if (data.toString().trim() === '2') {
       toggle = true;
-      hint(Math.floor(Math.random() * results.length))
+      let currIdex = Math.floor(Math.random() * results.length);
+      while (results.length > 1 && ranIndex == currIdex) {
+         currIdex = Math.floor(Math.random() * results.length);
+      }
+      hint(currIdex)
    } else if (data.toString().trim() === '3') {
-      process.stdout.write(`correct word is ${Correctword} \n`);
+      process.stdout.write(`correct word is '${Correctword}' \n`);
       process.stdout.write(`Full dictionary as follows \n`);
-     await fetchData(Correctword, '');
+      await fetchData(Correctword, '');
       process.exit();
    }
 })
@@ -80,7 +86,6 @@ function hint(index) {
 
 async function fetchDataRandom(word, operation) {
    try {
-      console.log("called", operation)
       let obj = {}, tempArr = [];
       let randomWord = await fetchApis('', '');
       let results = await fetchApis(randomWord.word, operation);
@@ -91,7 +96,7 @@ async function fetchDataRandom(word, operation) {
       } else if (operation == "ex") {
          tempArr = formatdefn(results['examples'], true)
       }
-      obj['word'] = randomWord.word;
+      obj['Correctword'] = randomWord.word;
       obj['results'] = tempArr;
       return obj;
 
@@ -132,7 +137,6 @@ async function fetchData(word, operation) {
       } else if (word && operation) {
          let results = await fetchApis(word, operation);
          formattedView(results, operation, word)
-         console.log("***************************************************")
       }
       process.exit();
    } catch (err) {
@@ -148,9 +152,9 @@ function formattedView(results, operation, word) {
       console.log(formatdefn(results));
    } else if (operation == "ex") {
       console.log(`Examlpes of word '${word}' are:`)
-      console.log(formatdefn(results.hasOwnProperty('examples')?results['examples']:[]));
+      console.log(formatdefn(results.hasOwnProperty('examples') ? results['examples'] : []));
    }
-  
+
 }
 function formatsyn(arr, type, value = false) {
    let synonym = [], antonym = [];
@@ -161,12 +165,12 @@ function formatsyn(arr, type, value = false) {
    return value ? ((type == 'syn') ? synonym : antonym) : ((type == 'syn') ? synonym.length ? synonym.join(',') : 'Not Found' : antonym.length ? antonym.join(',') : 'Not Found');
 }
 
-function formatdefn(arr,value = false) {
+function formatdefn(arr, value = false) {
    let text = [];
    arr.map((ele) => {
       text.push(ele.text);
    });
-   return value ? text : text.length?text.join('\n'):'Not Found';
+   return value ? text : text.length ? text.join('\n') : 'Not Found';
 }
 
 async function fetchApis(word, operation) {
@@ -186,11 +190,11 @@ async function fetchApis(word, operation) {
       data = await request.getAsync(`${apihost}${urlText}?api_key=${api_key}`);
       data = await data.toJSON();
 
-let parseData=JSON.parse(data.body);
-       if(parseData&&parseData['error']=='word not found'){
+      let parseData = JSON.parse(data.body);
+      if (parseData && parseData['error'] == 'word not found') {
          return [];
-       }else return parseData
-     
+      } else return parseData
+
 
    } catch (err) {
       console.log(err)
